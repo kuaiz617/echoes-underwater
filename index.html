@@ -26,8 +26,11 @@ let osc, reverb, delay
 
 function setup () {
   let c = createCanvas(window.innerWidth, window.innerHeight)
-  c.position(0, 0)
-  c.style('display', 'block')
+   c.style('position', 'fixed')
+   c.style('left', '0')
+   c.style('top', '0')
+   c.style('z-index', '1')
+   c.style('display', 'block')
 
   theme = {
     colors: ['#0799F2', '#FFFFFF', '#0058a1', '#004B97', '#84C1FF', '#c5afd4'],
@@ -163,12 +166,14 @@ async function startWebcam () {
   video = nn.create('video')
     .addTo('body')
     .css({
-      position: 'fixed',
-      left: '20px',
-      top: '20px',
-      opacity: 0.08,
-      width: '220px',
-      zIndex: 10
+     position: 'fixed',
+     left: '0',
+     top: '0',
+     width: '100vw',
+     height: '100vh',
+     objectFit: 'cover',
+     opacity: 0.08,
+     zIndex: 0
     })
     .scale(-1, 1)
     .set({
@@ -198,12 +203,22 @@ async function detectHand () {
 
   const indexTip = hand.keypoints[8]
   const thumbTip = hand.keypoints[4]
-  const pinchDistance = dist(indexTip.x, indexTip.y, thumbTip.x, thumbTip.y)
+
+  const vw =  640
+  const vh =  480
+
+  const ix = map(indexTip.x, 0, vw, 0, width)
+  const iy = map(indexTip.y, 0, vh, 0, height)
+
+  const tx = map(thumbTip.x, 0, vw, 0, width)
+  const ty = map(thumbTip.y, 0, vh, 0, height)
+
+  const pinchDistance = dist(ix, iy, tx, ty)
   const now = millis()
 
-  if (pinchDistance < 45 && now - lastPinchTime > 350) {
-    addRipple(indexTip.x, indexTip.y, 1.1)
-    playWaterSound(indexTip.x, indexTip.y, 0.12)
+  if (pinchDistance < 120 && now - lastPinchTime > 350) {
+    addRipple(ix, iy, 1.1)
+    playWaterSound(ix, iy, 0.12)
     lastPinchTime = now
   }
 }
