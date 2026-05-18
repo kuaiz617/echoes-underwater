@@ -1,1 +1,351 @@
-<h1>Hello World Wide Web!</h1>
+<body style="background:black; margin:0; padding:0; overflow:hidden;"></body>
+
+<script src="https://cdn.jsdelivr.net/gh/netizenorg/netnet-standard-library/build/nn.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection"></script>
+
+<script>
+/* global nn, handPoseDetection */
+
+let model, video
+let ripples = []
+let particles = []
+let graphics
+let theme
+let scaleValue
+let started = false
+let lastPinchTime = 0
+let pressStart = 0
+let bgm
+let osc, reverb, delay
+
+
+function setup () {
+  let c = createCanvas(window.innerWidth, window.innerHeight)
+  c.position(0, 0)
+  c.style('display', 'block')
+
+  theme = {
+    colors: ['#0799F2', '#FFFFFF', '#0058a1', '#004B97', '#84C1FF', '#c5afd4'],
+    background: '#150832'
+  }
+
+  graphics = createGraphics(width, height)
+  graphics.background(theme.background)
+  graphics.noStroke()
+
+  scaleValue = random(800, 2000)
+
+  for (let i = 0; i < 250; i++) {
+    particles.push(new Particle())
+  }
+
+  createInstruction()
+  loop()
+}
+
+function draw () {
+  background(0)
+
+  for (const p of particles) {
+    p.update()
+    p.draw()
+  }
+
+  image(graphics, 0, 0)
+
+  drawRipples()
+
+  if (started) detectHand()
+}
+
+function createInstruction () {
+  nn.create('div')
+    .content('Touch The Water')
+    .set('id', 'instruction')
+    .css({
+      position: 'fixed',
+      left: '50%',
+      top: '50%',
+      transform: 'translate(-50%, -50%)',
+      color: 'rgba(255,255,255,0.82)',
+      fontFamily: 'Georgia, serif',
+      fontSize: '28px',
+      letterSpacing: '1px',
+      zIndex: 20
+    })
+    .addTo('body')
+
+  nn.create('div')
+    .content('click, drag, hold, or pinch')
+    .set('id', 'sub')
+    .css({
+      position: 'fixed',
+      left: '50%',
+      top: '56%',
+      transform: 'translate(-50%, -50%)',
+      color: 'rgba(255,255,255,0.45)',
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      zIndex: 20
+    })
+    .addTo('body')
+}
+  
+function startBgm () {
+  if (!bgm) {
+    bgm = new Audio('https://raw.githubusercontent.com/kuaiz617/final-project/main/BGmusicBirdCallFromAfar.mp3')
+    bgm.loop = true
+    bgm.volume = 0.6
+  }
+
+  bgm.play().catch(err => console.log('bgm failed:', err))
+}
+  
+function initSound () {
+  userStartAudio()
+
+  osc = new p5.Oscillator('sine')
+  osc.start()
+  osc.amp(0)
+
+  reverb = new p5.Reverb()
+  delay = new p5.Delay()
+
+  reverb.process(osc, 4, 2)
+  delay.process(osc, 0.25, 0.25, 1800)
+}
+
+function playWaterSound (x, y, intensity) {
+  if (!osc) return
+
+  let freq = map(y, height, 0, 140, 620)
+  let pan = map(x, 0, width, -0.8, 0.8)
+  let amp = constrain(intensity, 0.02, 0.16)
+
+  osc.freq(freq)
+  osc.pan(pan)
+  osc.amp(amp, 0.02)
+  osc.amp(0, 0.9)
+}
+
+  
+async function startWebcam () {
+  userStartAudio()
+  startBgm()
+  if (!bgm) {
+    bgm = new Audio('BGmusicBirdCallFromAfar.mp3')
+    bgm.loop = true
+    bgm.volume = 0.6
+
+    bgm.addEventListener('canplaythrough', () => {
+      console.log('bgm ready')
+    })
+
+    bgm.addEventListener('error', () => {
+      console.log('bgm error', bgm.error)
+    })
+  }
+
+  try {
+    await bgm.play()
+    console.log('bgm playing')
+  } catch (err) {
+    console.log('audio failed', err)
+  }
+
+  if (!osc) initSound()
+
+  video = nn.create('video')
+    .addTo('body')
+    .css({
+      position: 'fixed',
+      left: '20px',
+      top: '20px',
+      opacity: 0.08,
+      width: '220px',
+      zIndex: 10
+    })
+    .scale(-1, 1)
+    .set({
+      autoplay: true,
+      muted: true,
+      stream: await nn.askFor({ video: true })
+    })
+
+  const type = handPoseDetection.SupportedModels.MediaPipeHands
+  const config = {
+    runtime: 'mediapipe',
+    solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands',
+    modelType: 'full',
+    maxHands: 1
+  }
+
+  model = await handPoseDetection.createDetector(type, config)
+  started = true
+}
+
+async function detectHand () {
+  if (!model || !video) return
+
+  const hands = await model.estimateHands(video, { flipHorizontal: true })
+  const hand = hands[0]
+  if (!hand) return
+
+  const indexTip = hand.keypoints[8]
+  const thumbTip = hand.keypoints[4]
+  const pinchDistance = dist(indexTip.x, indexTip.y, thumbTip.x, thumbTip.y)
+  const now = millis()
+
+  if (pinchDistance < 45 && now - lastPinchTime > 350) {
+    addRipple(indexTip.x, indexTip.y, 1.1)
+    playWaterSound(indexTip.x, indexTip.y, 0.12)
+    lastPinchTime = now
+  }
+}
+
+function addRipple (x, y, strength = 1) {
+  ripples.push({ x, y, r: 0, alpha: 255, strength })
+}
+
+function drawRipples () {
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    let p = ripples[i]
+
+    noFill()
+
+    strokeWeight(0.8)
+    stroke(255, p.alpha)
+    circle(p.x, p.y, p.r * 1.25)
+
+    strokeWeight(1.45)
+    stroke(180, 220, 255, p.alpha * 0.7)
+    circle(p.x, p.y, p.r * 0.8)
+
+    strokeWeight(2)
+    stroke(255, p.alpha * 0.5)
+    circle(p.x, p.y, p.r * 0.6)
+
+    p.r += 1.4 * p.strength
+    p.alpha -= 2.1
+
+    if (p.alpha <= 0) ripples.splice(i, 1)
+  }
+}
+
+class Particle {
+  constructor () {
+    this.pos = createVector(random(-50, width + 50), random(-50, height + 50))
+    this.color = random(theme.colors)
+    this.r = random(0.25, 1)
+  }
+
+  update () {
+    const dir = noise(this.pos.x / scaleValue, this.pos.y / scaleValue) * TWO_PI * scaleValue
+    this.pos.add(Math.cos(dir) / 2, Math.sin(dir) / 2)
+
+    if (
+      this.pos.x < -50 ||
+      this.pos.x > width + 50 ||
+      this.pos.y < -50 ||
+      this.pos.y > height + 50
+    ) {
+      this.pos.set(random(-50, width + 50), random(-50, height + 50))
+    }
+  }
+
+  draw () {
+    graphics.fill(this.color)
+    graphics.circle(this.pos.x, this.pos.y, this.r)
+  }
+}
+
+function mousePressed () {
+  startBgm()
+  
+  if (!osc) initSound()
+
+  if (nn.get('#instruction')) nn.get('#instruction').remove()
+  if (nn.get('#sub')) nn.get('#sub').remove()
+
+  pressStart = millis()
+  addRipple(mouseX, mouseY, 1)
+  playWaterSound(mouseX, mouseY, 0.08)
+}
+
+function mouseDragged () {
+  let speed = dist(mouseX, mouseY, pmouseX, pmouseY)
+
+  if (frameCount % 3 === 0) {
+    addRipple(mouseX, mouseY, map(speed, 0, 80, 0.6, 1.8))
+    playWaterSound(mouseX, mouseY, map(speed, 0, 80, 0.03, 0.14))
+  }
+}
+
+function mouseReleased () {
+  let held = millis() - pressStart
+
+  if (held > 700) {
+    addRipple(mouseX, mouseY, 2.6)
+    playWaterSound(mouseX, mouseY, 0.16)
+  }
+}
+
+function touchStarted () {
+  mousePressed()
+  return false
+}
+
+function touchMoved () {
+  mouseDragged()
+  return false
+}
+
+function touchEnded () {
+  mouseReleased()
+  return false
+}
+
+function windowResized () {
+  resizeCanvas(window.innerWidth, window.innerHeight)
+
+  graphics = createGraphics(width, height)
+  graphics.background(theme.background)
+  graphics.noStroke()
+
+  particles = []
+  for (let i = 0; i < 305; i++) {
+    particles.push(new Particle())
+  }
+}
+
+nn.create('button')
+  .content('Use your hands')
+  .css({
+    position: 'fixed',
+    left: '50%',
+    top: '64%',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 30,
+    padding: '12px 22px',
+    border: '1px solid rgba(255,255,255,0.25)',
+    borderRadius: '999px',
+    background: 'rgba(255,255,255,0.08)',
+    color: 'white',
+    fontFamily: 'Georgia, serif',
+    fontSize: '15px',
+    letterSpacing: '0.8px',
+    cursor: 'pointer',
+    backdropFilter: 'blur(8px)',
+    boxShadow: '0 0 30px rgba(120,180,255,0.25)'
+  })
+  .addTo('body')
+  .on('click', function () {
+    this.remove()
+    startWebcam()
+  })
+</script>
