@@ -1,16 +1,34 @@
-# final-project
+# Touch The Water
 
-This is your project's README a file which contains information about your work. This can include things like instructions, installation guides or documentation. You can write whatever you want here using a simple markup language called [markdown](https://markdownguide.offshoot.io/basic-syntax/). This is the first thing someone will see when they view your project on GitHub, but it won't be visible to the audience viewing your published site on the Web.
+An interactive generative web artwork exploring the feeling of deep water, drifting currents, and distant underwater echoes.
 
-## project files
+This project was inspired by deep sea videos and the feeling of staring into dark water for a long time. I have always been fascinated by underwater environments, especially the quiet but slightly unsettling atmosphere created by moving currents, whale-like sounds, and darkness.
 
-When working on a project in netnet.studio you should always see a file-path at the top of the editor, in the case of this file it would be `final-project/README.md`, this lets you know which file you're currently working on. Clicking on this path in netnet will also open the **Project Files** widget which you can use to upload, create, delete and navigate between the different files in your project.
+The background music, *MusicBirdCallFromAfar*, comes from a section of the game *Genshin Impact*. I was drawn to its airy and distant quality. The sound reminded me of whale calls echoing underwater, mixed with something ancient and fragile.
 
-When you make a change to a file you're working on, you'll notice a small circle appear next to the path, this means your changes have not yet been saved. You'll need to save it (CTRL+S or CMD+S on Mac) to see those changes reflected in the rendered output section of netnet.studio. This is only temporarily saved while working on the project. To make these saved changes permanent, you'll need to click on the **git push** button in the Project Files widget to commit these changes and upload them to your GitHub.
+The flowing lines in the piece are generated through noise-based particle movement. I wanted them to resemble invisible water currents slowly shifting across the screen. The interaction is intentionally minimal and meditative:
 
-## publishing to the Web
+- mouse clicks create ripples
+- dragging disturbs the “water”
+- sound reacts like droplets, strings, or distant guzheng-like tones
+- hand gestures can also generate ripples through webcam tracking
 
-When you're ready to publish your work on the Web click on netnet's face and open the **Coding Menu**, under *my code* press the "share" button. Choose to "publish on the Web", where you'll be reminded that you can of course download your project and upload it to your preferred Web host. But, because this project is being versioned on GitHub you could simply ask netnet to publish your work to the Web using GitHub's "ghpages" server, which also conveniently generates a publicly accessible URL for you.
+Rather than creating a goal-oriented interaction, I wanted the experience to feel ambient and reflective — as if the user is lightly touching the surface of a deep, living body of water.
+
+## Technologies
+
+- p5.js
+- netnet.studio
+- MediaPipe Hands
+- TensorFlow Hand Pose Detection
+- Web Audio / generative sound interaction
+
+## Interaction
+
+- click
+- drag
+- pinch gesture
+- webcam interaction
 
 ----
 
